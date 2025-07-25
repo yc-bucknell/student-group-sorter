@@ -1,64 +1,47 @@
-
 import streamlit as st
 import pandas as pd
 import os
 
-# CSV path for appending new responses
-CSV_FILE = "student_survey.csv"
+st.title("🎲 Fun Group Sorter Game!")
 
-# Load existing survey data
-if os.path.exists(CSV_FILE):
-    df = pd.read_csv(CSV_FILE)
+# Load or create CSV
+file_path = "student_survey.csv"
+if os.path.exists(file_path):
+    df = pd.read_csv(file_path)
 else:
-    df = pd.DataFrame(columns=["Name", "Q1", "Q2", "Q3", "Q4"])
+    df = pd.DataFrame(columns=["Name", "Color", "Weekend", "Drink", "PersonType", "Superpower", "World"])
 
-st.title("🎓 Student Personality Group Sorter")
+# Get student name
+name = st.text_input("Enter your name")
 
-# Survey questions
-st.subheader("📝 Quick Survey")
-
-name = st.text_input("Enter your name:")
-
-q1 = st.radio("1. How do you prefer to recharge after a long day?",
-              ["🧘 Calm", "🎉 Energetic", "🚀 Adventurous", "Not listed here"],
-              index=None)
-
-q2 = st.radio("2. Which best describes your thinking style?",
-              ["📈 Analytical", "🎨 Creative", "🧠 Strategic", "Not listed here"],
-              index=None)
-
-q3 = st.radio("3. What time of day are you most productive?",
-              ["🌅 Morning", "🌙 Night", "☀️ Afternoon", "Not listed here"],
-              index=None)
-
-q4 = st.radio("4. Do you prefer working in groups or alone?",
-              ["👥 Group", "👤 Individual", "🤷 Hard to say"],
-              index=None)
+# Ask fun survey questions
+color = st.radio("1. What’s your favorite color?", ["Red", "Blue", "Green", "Not listed here"])
+weekend = st.radio("2. What’s your ideal weekend activity?", ["Watching movies/shows", "Going outside (hiking, sports)", "Gaming", "Not listed here"])
+drink = st.radio("3. What’s your favorite drink?", ["Coffee", "Boba/Milk Tea", "Water", "Not listed here"])
+person_type = st.radio("4. Are you a morning person or a night owl?", ["Morning person", "Night owl", "Hard to say"])
+superpower = st.radio("5. Pick a superpower you’d like to have:", ["Flying", "Time travel", "Reading minds", "Not listed here"])
+world = st.radio("6. Pick a fictional world you’d live in:", ["Marvel Universe", "Pokémon", "Barbie Land 🌸", "Not listed here"])
 
 if st.button("Submit"):
-    if not name or not q1 or not q2 or not q3 or not q4:
-        st.warning("Please answer all questions before submitting.")
+    if name.strip() == "":
+        st.error("Please enter your name.")
     else:
-        # Append new row to the CSV
-        new_row = pd.DataFrame([[name, q1, q2, q3, q4]], columns=["Name", "Q1", "Q2", "Q3", "Q4"])
-        df = pd.concat([df, new_row], ignore_index=True)
-        df.to_csv(CSV_FILE, index=False)
-        
-        st.success("Thanks for your submission!")
-        
-        if all(ans == "Not listed here" for ans in [q1, q2, q3]):
-            st.info("🤔 Hmm... we can't quite guess your type!")
+        new_row = {
+            "Name": name.strip(),
+            "Color": color,
+            "Weekend": weekend,
+            "Drink": drink,
+            "PersonType": person_type,
+            "Superpower": superpower,
+            "World": world
+        }
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        df.to_csv(file_path, index=False)
+
+        if all(choice == "Not listed here" for choice in [color, weekend, drink, superpower, world]) and person_type == "Hard to say":
+            st.warning("Hmm... 🤔 I can't quite guess your type! You're truly unique!")
         else:
-            # Group logic
-            group_traits = {
-                "🧘 Calm": "Type A", "📈 Analytical": "Type A", "🌅 Morning": "Type A", "👥 Group": "Type A",
-                "🎉 Energetic": "Type B", "🎨 Creative": "Type B", "🌙 Night": "Type B", "👤 Individual": "Type B",
-                "🚀 Adventurous": "Type C", "🧠 Strategic": "Type C", "☀️ Afternoon": "Type C"
-            }
-            
-            answers = [q1, q2, q3, q4]
-            traits = [group_traits.get(ans) for ans in answers if ans in group_traits]
-            group = max(set(traits), key=traits.count)
-            
-            st.balloons()
-            st.markdown(f"🎯 Based on your answers, you belong to **{group}** personality group!")
+            group_id = f"{color[:1]}{weekend[:1]}{drink[:1]}{person_type[:1]}{superpower[:1]}{world[:1]}"
+            st.success(f"🎉 Thanks {name}! You’ve been grouped into: **Group {group_id.upper()}**")
+
+        st.info("You can close the window now or refresh to start over.")
