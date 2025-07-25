@@ -1,47 +1,65 @@
 import streamlit as st
 import pandas as pd
-import os
+import uuid
 
-st.title("🎲 Fun Group Sorter Game!")
+# Define survey questions and options
+questions = {
+    "What’s your favorite color?": ["Red", "Blue", "Green", "Not listed here"],
+    "What’s your ideal weekend activity?": ["Watching movies/shows", "Going outside (hiking, sports)", "Gaming", "Not listed here"],
+    "What’s your favorite drink?": ["Coffee", "Boba/Milk Tea", "Water", "Not listed here"],
+    "Are you a morning person or a night owl?": ["Morning person", "Night owl", "Hard to say"],
+    "Pick a superpower you’d like to have:": ["Flying", "Time travel", "Reading minds", "Not listed here"],
+    "Pick a fictional world you’d live in:": ["Marvel Universe", "Pokémon", "Barbie Land 🌸", "Not listed here"],
+}
 
-# Load or create CSV
-file_path = "student_survey.csv"
-if os.path.exists(file_path):
-    df = pd.read_csv(file_path)
-else:
-    df = pd.DataFrame(columns=["Name", "Color", "Weekend", "Drink", "PersonType", "Superpower", "World"])
+# Fun group label rules based on answers
+group_map = {
+    "Boba/Milk Tea": "🧃 Boba Enthusiasts",
+    "Time travel": "🦸 Time Travelers",
+    "Gaming": "🎮 Gamers Guild",
+    "Barbie Land 🌸": "💅 Barbie Squad",
+    "Not listed here": "🌈 Mystery Mode"
+}
 
-# Get student name
-name = st.text_input("Enter your name")
+def determine_group(answers):
+    # Flatten answers and count which keyword appears most
+    answer_values = list(answers.values())
+    for keyword, group in group_map.items():
+        if keyword in answer_values:
+            return group
+    return "🌈 Mystery Mode"
 
-# Ask fun survey questions
-color = st.radio("1. What’s your favorite color?", ["Red", "Blue", "Green", "Not listed here"])
-weekend = st.radio("2. What’s your ideal weekend activity?", ["Watching movies/shows", "Going outside (hiking, sports)", "Gaming", "Not listed here"])
-drink = st.radio("3. What’s your favorite drink?", ["Coffee", "Boba/Milk Tea", "Water", "Not listed here"])
-person_type = st.radio("4. Are you a morning person or a night owl?", ["Morning person", "Night owl", "Hard to say"])
-superpower = st.radio("5. Pick a superpower you’d like to have:", ["Flying", "Time travel", "Reading minds", "Not listed here"])
-world = st.radio("6. Pick a fictional world you’d live in:", ["Marvel Universe", "Pokémon", "Barbie Land 🌸", "Not listed here"])
+# Load existing responses
+@st.cache_data
+def load_data():
+    try:
+        return pd.read_csv("student_survey.csv")
+    except:
+        return pd.DataFrame(columns=["ID"] + list(questions.keys()) + ["Group"])
 
-if st.button("Submit"):
-    if name.strip() == "":
-        st.error("Please enter your name.")
-    else:
-        new_row = {
-            "Name": name.strip(),
-            "Color": color,
-            "Weekend": weekend,
-            "Drink": drink,
-            "PersonType": person_type,
-            "Superpower": superpower,
-            "World": world
-        }
+# Main app
+st.title("🎲 Fun Student Group Sorter")
+
+with st.form("survey_form"):
+    st.write("Please answer the following fun questions:")
+    responses = {}
+    for q, options in questions.items():
+        responses[q] = st.radio(q, options)
+
+    submitted = st.form_submit_button("Submit")
+
+    if submitted:
+        group = determine_group(responses)
+        student_id = str(uuid.uuid4())
+        df = load_data()
+        new_row = {"ID": student_id, **responses, "Group": group}
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        df.to_csv(file_path, index=False)
+        df.to_csv("student_survey.csv", index=False)
+        st.success(f"✅ Thanks for submitting! You belong to: **{group}**")
 
-        if all(choice == "Not listed here" for choice in [color, weekend, drink, superpower, world]) and person_type == "Hard to say":
-            st.warning("Hmm... 🤔 I can't quite guess your type! You're truly unique!")
-        else:
-            group_id = f"{color[:1]}{weekend[:1]}{drink[:1]}{person_type[:1]}{superpower[:1]}{world[:1]}"
-            st.success(f"🎉 Thanks {name}! You’ve been grouped into: **Group {group_id.upper()}**")
-
-        st.info("You can close the window now or refresh to start over.")
+# Optional: Display current stats (only if teacher is viewing)
+with st.expander("📊 See current class group distribution"):
+    df = load_data()
+    if not df.empty:
+        group_counts = df["Group"].value_counts()
+        st.bar_chart(group_counts)
