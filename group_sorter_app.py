@@ -2,14 +2,13 @@ import streamlit as st
 import pandas as pd
 import os
 
-# File path for storing survey data
 CSV_FILE = "student_survey.csv"
 
 # Load existing data or create new
 if os.path.exists(CSV_FILE):
     df = pd.read_csv(CSV_FILE)
 else:
-    df = pd.DataFrame(columns=["Name", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6"])
+    df = pd.DataFrame(columns=["Name", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Group"])
 
 st.title("🎲 Fun Grouping App with Emojis and Personality Types!")
 
@@ -29,12 +28,9 @@ Q6 = st.radio("6. Pick a fictional world you’d live in:", [
 ])
 
 def assign_group(row):
-    # If all "Not listed here" (except Q4), assign Mystery Mode
     not_listed_cols = ["Q1", "Q2", "Q3", "Q5", "Q6"]
     if all(row[col] == "Not listed here" for col in not_listed_cols) and row["Q4"] == "Hard to say":
         return "🌈 Mystery Mode"
-    
-    # Priority groups based on dominant traits
     if row["Q3"] == "Boba/Milk Tea":
         return "🧃 Boba Enthusiasts"
     if row["Q5"] == "Time travel":
@@ -65,7 +61,6 @@ if st.button("Submit"):
     if not name.strip():
         st.error("Please enter your name.")
     else:
-        # Add new entry to dataframe
         new_entry = {
             "Name": name.strip(),
             "Q1": Q1,
@@ -75,8 +70,27 @@ if st.button("Submit"):
             "Q5": Q5,
             "Q6": Q6
         }
+        # Assign group to the new entry
+        new_entry["Group"] = assign_group(new_entry)
+        
+        # Append to dataframe and save
         df = pd.concat([df, pd.DataFrame([new_entry])], ignore_index=True)
         df.to_csv(CSV_FILE, index=False)
         
-        # Show summary and group
+        # Show user summary
         st.markdown(generate_summary(new_entry))
+
+# Display current group distribution chart
+if not df.empty and "Group" in df.columns:
+    st.subheader("📊 Current Group Distribution")
+    group_counts = df["Group"].value_counts()
+    st.bar_chart(group_counts)
+
+    # Download button for the updated CSV with groups
+    csv = df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📥 Download Group Roster CSV",
+        data=csv,
+        file_name="student_group_roster.csv",
+        mime="text/csv"
+    )
